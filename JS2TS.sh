@@ -1,1 +1,1 @@
-for file in *.js; do mv setupTests.js setupTests.ts; done
+for file in *.js; do mv .js .ts; done
