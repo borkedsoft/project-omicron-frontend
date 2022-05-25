@@ -2,6 +2,9 @@ import React from 'react';
 import logo from './logo.svg';
 import './App.css';
 
+// grab the projectID variable declared externally
+const projectID = (window as any).projectID as number;
+
 // TODO: should probably store, pass canvas context in as a parameter
 const initialCode =
 `var canvas = document.getElementById("gameCanvas");
@@ -44,7 +47,7 @@ export default class App extends React.Component<{}, AppState> {
         this.handleClick = this.handleClick.bind(this);
         this.startAnim   = this.startAnim.bind(this);
         this.stopAnim    = this.stopAnim.bind(this);
-        this.animFrame   = this.animFrame.bind(this);
+        //this.animFrame   = this.animFrame.bind(this);
 
         this.state = {
             currentFile: "main.js",
@@ -56,17 +59,27 @@ export default class App extends React.Component<{}, AppState> {
 
         // TODO: load main.js
         //this.loadCode(initialCode);
+        this.retrieveCode();
+    }
+
+    // TODO: split code retrieval/update/editing into another component
+    retrieveCode() {
+        fetch(window.location + this.state.currentFile)
+            .then((response) => response.text())
+            .then((txt) => this.setState({ code: txt }));
     }
 
     render() {
         return (
           <div className="App">
               <h1>Working on TypeScript :)</h1>
+              <b>{ projectID }</b>
+
               <textarea rows={10}
                         cols={45}
                         placeholder='Loading...'
                         onChange={this.updateCode}
-                        defaultValue={initialCode}
+                        defaultValue={this.state.code}
                         >
               </textarea>
 
@@ -80,6 +93,7 @@ export default class App extends React.Component<{}, AppState> {
         );
     }
 
+    /*
     animFrame(timestamp: number) {
         if (this.state.start < 0) {
             this.setState({
@@ -93,6 +107,7 @@ export default class App extends React.Component<{}, AppState> {
             requestAnimationFrame(this.animFrame);
         }
     }
+    */
 
     loadCode(str: string) {
         let newcode = "(function(elapsed) {" + str + "})";
@@ -116,7 +131,22 @@ export default class App extends React.Component<{}, AppState> {
 
     startAnim(e: React.MouseEvent<HTMLButtonElement>) {
         this.setState({ running: true });
-        requestAnimationFrame(this.animFrame);
+
+        let path = window.location + "main.js";
+        let self = this;
+
+        import(/*webpackIgnore: true*/ path)
+            .then((module) => {
+                function looper(timestamp: number) {
+                    module.loop(timestamp - self.state.start);
+
+                    if (self.state.running) {
+                        requestAnimationFrame(looper);
+                    }
+                }
+
+                requestAnimationFrame(looper);
+            });
     }
 
     stopAnim(e: React.MouseEvent<HTMLButtonElement>) {
