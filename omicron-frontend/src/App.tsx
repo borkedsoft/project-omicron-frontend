@@ -132,7 +132,16 @@ export default class App extends React.Component<{}, AppState> {
     startAnim(e: React.MouseEvent<HTMLButtonElement>) {
         this.setState({ running: true });
 
-        let path = window.location + "main.js";
+        // XXX: cache busting, very bad no good... but there doesn't
+        //      seem to be another option. I think the memory impact of this
+        //      should be minimal since the module is only referenced
+        //      in the looper function, so should be GC'd, although it might
+        //      fill the browser cache
+        //      
+        //      t. https://github.com/nodejs/modules/issues/307#issuecomment-764560656
+        let rand = "?" + Math.random().toString(36).substring(2);
+
+        let path = window.location + "main.js" + rand;
         let self = this;
 
         import(/*webpackIgnore: true*/ path)
