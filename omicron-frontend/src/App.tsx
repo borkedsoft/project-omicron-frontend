@@ -139,9 +139,9 @@ export default class App extends React.Component<{}, AppState> {
         //      fill the browser cache
         //      
         //      t. https://github.com/nodejs/modules/issues/307#issuecomment-764560656
-        let rand = "?" + Math.random().toString(36).substring(2);
+        let rand = Math.random().toString(36).substring(2);
 
-        let path = window.location + "main.js" + rand;
+        let path = window.location + rand + "/main.js";
         let self = this;
 
         import(/*webpackIgnore: true*/ path)
