@@ -60,6 +60,7 @@ interface AppState {
     evaled:         (elapsed: number) => void,
     running:        boolean,
     start:          number,
+    error:          string | null,
 };
 
 export default class App extends React.Component<{}, AppState> {
@@ -78,6 +79,7 @@ export default class App extends React.Component<{}, AppState> {
             evaled:         function (elapsed: number) {},
             running:        false,
             start:          -1,
+            error:          null,
         };
 
         // TODO: load main.js
@@ -93,10 +95,16 @@ export default class App extends React.Component<{}, AppState> {
     }
 
     render() {
+        var errmsg = (this.state.error)
+            ? (<div className="alert alert-danger">{this.state.error as string}</div>)
+            : "";
+
         return (
           <div className="App">
               <h1>Working on TypeScript :)</h1>
               <b>{ projectID }</b>
+
+              {errmsg}
 
               <textarea rows={10}
                         cols={45}
@@ -187,7 +195,9 @@ export default class App extends React.Component<{}, AppState> {
                     })
                     .then((obj) => {
                         fetch(obj.codetext, settings);
-                    });
+                    })
+                    .catch((err: Error) => self.setState({ error: err.toString() }))
+                    ;
             });
     };
 
@@ -197,32 +207,41 @@ export default class App extends React.Component<{}, AppState> {
     }
 
     startAnim(e: React.MouseEvent<HTMLButtonElement>) {
-        this.setState({ running: true });
+        if (!this.state.running) {
+            this.setState({ running: true });
 
-        // XXX: cache busting, very bad no good... but there doesn't
-        //      seem to be another option. I think the memory impact of this
-        //      should be minimal since the module is only referenced
-        //      in the looper function, so should be GC'd, although it might
-        //      fill the browser cache
-        //      
-        //      t. https://github.com/nodejs/modules/issues/307#issuecomment-764560656
-        let rand = Math.random().toString(36).substring(2);
+            // XXX: cache busting, very bad no good... but there doesn't
+            //      seem to be another option. I think the memory impact of this
+            //      should be minimal since the module is only referenced
+            //      in the looper function, so should be GC'd, although it might
+            //      fill the browser cache
+            //
+            //      t. https://github.com/nodejs/modules/issues/307#issuecomment-764560656
+            let rand = Math.random().toString(36).substring(2);
 
-        let path = window.location + rand + "/main.js";
-        let self = this;
+            let path = window.location + rand + "/main.js";
+            let self = this;
 
-        import(/*webpackIgnore: true*/ path)
-            .then((module) => {
-                function looper(timestamp: number) {
-                    module.loop(timestamp - self.state.start);
+            import(/*webpackIgnore: true*/ path)
+                .then((module) => {
+                    function looper(timestamp: number) {
+                        try {
+                            module.loop(timestamp - self.state.start);
 
-                    if (self.state.running) {
-                        requestAnimationFrame(looper);
+                            if (self.state.running) {
+                                requestAnimationFrame(looper);
+                            }
+
+                        } catch (err: any) {
+                            self.setState({ error: err.toString() });
+                        }
                     }
-                }
 
-                requestAnimationFrame(looper);
-            });
+                    requestAnimationFrame(looper);
+                })
+                .catch((err: Error) => self.setState({ error: err.toString() }))
+                ;
+        }
     }
 
     stopAnim(e: React.MouseEvent<HTMLButtonElement>) {
