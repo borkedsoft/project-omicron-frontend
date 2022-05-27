@@ -3,7 +3,30 @@ import logo from './logo.svg';
 import './App.css';
 
 // grab the projectID variable declared externally
-const projectID = (window as any).projectID as number;
+const projectID  = (window as any).projectID  as number;
+const projectURL = (window as any).projectURL as string;
+
+
+// https://docs.djangoproject.com/en/4.0/ref/csrf/#acquiring-the-token-if-csrf-use-sessions-and-csrf-cookie-httponly-are-false
+function getCookie(name: string) {
+    let cookieValue = null;
+
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            // Does this cookie string begin with the name we want?
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
 
 // TODO: should probably store, pass canvas context in as a parameter
 const initialCode =
@@ -32,11 +55,11 @@ type Properties = {
 };
 
 interface AppState {
-    currentFile: string,
-    code:        string,
-    evaled:      (elapsed: number) => void,
-    running:     boolean,
-    start:       number,
+    currentFile:    string,
+    code:           string,
+    evaled:         (elapsed: number) => void,
+    running:        boolean,
+    start:          number,
 };
 
 export default class App extends React.Component<{}, AppState> {
@@ -50,11 +73,11 @@ export default class App extends React.Component<{}, AppState> {
         //this.animFrame   = this.animFrame.bind(this);
 
         this.state = {
-            currentFile: "main.js",
-            code:        "",
-            evaled:      function (elapsed: number) {},
-            running:     false,
-            start:       -1,
+            currentFile:    "main.js",
+            code:           "",
+            evaled:         function (elapsed: number) {},
+            running:        false,
+            start:          -1,
         };
 
         // TODO: load main.js
@@ -118,10 +141,54 @@ export default class App extends React.Component<{}, AppState> {
         });
     }
 
+    getProject() {
+        return fetch(projectURL)
+            .then((response) => response.json());
+    }
+
     updateCode(e: React.ChangeEvent<HTMLTextAreaElement>) {
-        this.setState({
-            code: "(function(elapsed) {" + e.target.value + "})",
-        });
+        if (csrftoken === null) {
+            console.log("Have no CSRF token!");
+            return;
+        }
+
+        let code = e.target.value;
+
+        let settings = {
+            method: "PUT",
+            body: JSON.stringify({ code: code }),
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken" : csrftoken,
+            },
+            // TODO: typescript has a value it expects for this,
+            //       use that
+            // TODO: hmm, does it really matter if we're running arbitrary
+            //       javascript anyway, is there a way to sandbox 3rd-party
+            //       code?
+            //mode: "same-origin",
+        };
+
+        let self = this;
+
+        // TODO: 3 fetchs for every keystroke is less than ideal, don't do that
+        this.getProject()
+            .then((proj) => {
+                fetch(proj.codefiles)
+                    .then((response) => response.json())
+                    .then((objs) => {
+                        for (var x in objs) {
+                            if (objs[x].name == self.state.currentFile) {
+                                return objs[x];
+                            }
+                        }
+
+                        return {};
+                    })
+                    .then((obj) => {
+                        fetch(obj.codetext, settings);
+                    });
+            });
     };
 
     handleClick(e: React.MouseEvent<HTMLButtonElement>) {
