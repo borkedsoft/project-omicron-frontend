@@ -69,11 +69,9 @@ export default class App extends React.Component<{}, AppState> {
         super(props);
 
         this.updateCode     = this.updateCode.bind(this);
-        this.handleClick    = this.handleClick.bind(this);
         this.startAnim      = this.startAnim.bind(this);
         this.stopAnim       = this.stopAnim.bind(this);
         this.setCurrentFile = this.setCurrentFile.bind(this);
-        //this.animFrame   = this.animFrame.bind(this);
 
         this.state = {
             currentFile:    "main.js",
@@ -148,15 +146,13 @@ export default class App extends React.Component<{}, AppState> {
 
               <div> {filenames} </div>
 
-              <textarea rows={10}
-                        cols={45}
-                        placeholder='Loading...'
+              <textarea placeholder='Loading...'
+                        style={{ margin: 0, width: "100%", height: "100%" }}
                         onChange={this.updateCode}
                         value={this.state.code}
                         >
               </textarea>
 
-              <button onClick={this.handleClick}>Load</button>
               <button onClick={this.startAnim}>Start</button>
               <button onClick={this.stopAnim}>Stop</button>
 
@@ -223,11 +219,6 @@ export default class App extends React.Component<{}, AppState> {
                     ;
             });
     };
-
-    handleClick(e: React.MouseEvent<HTMLButtonElement>) {
-        this.setState({ evaled: eval(this.state.code) });
-        console.log(this.state.code);
-    }
 
     startAnim(e: React.MouseEvent<HTMLButtonElement>) {
         if (!this.state.running) {
