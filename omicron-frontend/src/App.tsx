@@ -56,6 +56,7 @@ type Properties = {
 
 interface AppState {
     currentFile:    string,
+    availableFiles: string[],
     code:           string,
     evaled:         (elapsed: number) => void,
     running:        boolean,
@@ -67,14 +68,16 @@ export default class App extends React.Component<{}, AppState> {
     constructor(props: Properties) {
         super(props);
 
-        this.updateCode  = this.updateCode.bind(this);
-        this.handleClick = this.handleClick.bind(this);
-        this.startAnim   = this.startAnim.bind(this);
-        this.stopAnim    = this.stopAnim.bind(this);
+        this.updateCode     = this.updateCode.bind(this);
+        this.handleClick    = this.handleClick.bind(this);
+        this.startAnim      = this.startAnim.bind(this);
+        this.stopAnim       = this.stopAnim.bind(this);
+        this.setCurrentFile = this.setCurrentFile.bind(this);
         //this.animFrame   = this.animFrame.bind(this);
 
         this.state = {
             currentFile:    "main.js",
+            availableFiles: [],
             code:           "",
             evaled:         function (elapsed: number) {},
             running:        false,
@@ -84,33 +87,72 @@ export default class App extends React.Component<{}, AppState> {
 
         // TODO: load main.js
         //this.loadCode(initialCode);
-        this.retrieveCode();
+        this.retrieveCode(this.state.currentFile);
+        this.updateProject();
     }
 
     // TODO: split code retrieval/update/editing into another component
-    retrieveCode() {
-        fetch(window.location + this.state.currentFile)
+    retrieveCode(filename: string) {
+        fetch(window.location + filename)
             .then((response) => response.text())
             .then((txt) => this.setState({ code: txt }));
     }
+
+    getProject() {
+        return fetch(projectURL)
+            .then((response) => response.json());
+    }
+
+    setCurrentFile(filename: string) {
+        this.setState({ currentFile: filename });
+        this.retrieveCode(filename);
+    }
+
+	updateProject() {
+        let self = this;
+
+		this.getProject()
+            .then((proj) => {
+                fetch(proj.codefiles)
+                    .then((response) => response.json())
+                    .then((objs) => {
+                        var ret: string[] = [];
+
+                        for (var x in objs) {
+                            ret.push(objs[x].name);
+                        }
+
+                        self.setState({ availableFiles: ret });
+                        //console.log("have available files: " + ret);
+                    })
+                    .catch((err: Error) => self.setState({ error: err.toString() }))
+                    ;
+            });
+	}
+
 
     render() {
         var errmsg = (this.state.error)
             ? (<div className="alert alert-danger">{this.state.error as string}</div>)
             : "";
 
+        var filenames = this.state.availableFiles.map((filename) => (<div>
+            <button onClick={() => this.setCurrentFile(filename)}>{filename}</button>
+        </div>));
+
         return (
           <div className="App">
               <h1>Working on TypeScript :)</h1>
-              <b>{ projectID }</b>
-
+              <b>You're on project { projectID }!</b>
               {errmsg}
+
+              <div> {filenames} </div>
 
               <textarea rows={10}
                         cols={45}
                         placeholder='Loading...'
                         onChange={this.updateCode}
-                        defaultValue={this.state.code}
+                        value={this.state.code}
                         >
               </textarea>
 
@@ -124,22 +166,6 @@ export default class App extends React.Component<{}, AppState> {
         );
     }
 
-    /*
-    animFrame(timestamp: number) {
-        if (this.state.start < 0) {
-            this.setState({
-                start: timestamp,
-            })
-        }
-
-        this.state.evaled(timestamp - this.state.start);
-
-        if (this.state.running) {
-            requestAnimationFrame(this.animFrame);
-        }
-    }
-    */
-
     loadCode(str: string) {
         let newcode = "(function(elapsed) {" + str + "})";
 
@@ -149,22 +175,19 @@ export default class App extends React.Component<{}, AppState> {
         });
     }
 
-    getProject() {
-        return fetch(projectURL)
-            .then((response) => response.json());
-    }
-
     updateCode(e: React.ChangeEvent<HTMLTextAreaElement>) {
         if (csrftoken === null) {
             console.log("Have no CSRF token!");
             return;
         }
 
-        let code = e.target.value;
+        let newCode = e.target.value;
+
+        this.setState({ code: newCode });
 
         let settings = {
             method: "PUT",
-            body: JSON.stringify({ code: code }),
+            body: JSON.stringify({ code: newCode }),
             headers: {
                 "Content-Type": "application/json",
                 "X-CSRFToken" : csrftoken,
