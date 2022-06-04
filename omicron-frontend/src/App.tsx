@@ -140,21 +140,34 @@ export default class App extends React.Component<{}, AppState> {
 
         return (
           <div className="App">
-              <h1>Working on TypeScript :)</h1>
-              <b>You're on project { projectID }!</b>
+              <b>You're on project #{ projectID }!</b>
               {errmsg}
 
-              <div> {filenames} </div>
+              <div className="container m-0">
+                  <div className="row">
+                      <div className="btn-toolbar justify-content-end" role="toolbar">
+                          <div className="btn-group" role="group">
+                              <button className="btn btn-secondary" type="button" onClick={this.startAnim}>Start</button>
+                              <button className="btn btn-danger"    type="button" onClick={this.stopAnim}>Stop</button>
+                          </div>
+                      </div>
+                  </div>
 
-              <textarea placeholder='Loading...'
-                        style={{ margin: 0, width: "100%", height: "100%" }}
-                        onChange={this.updateCode}
-                        value={this.state.code}
-                        >
-              </textarea>
+                  <div className="row">
+                      <div className="col-1">
+                          <div> {filenames} </div>
+                      </div>
 
-              <button onClick={this.startAnim}>Start</button>
-              <button onClick={this.stopAnim}>Stop</button>
+                      <div className="col">
+                          <textarea placeholder='Loading...'
+                                    style={{ margin: 0, width: "100%", height: "calc(100vh - 200px)" }}
+                                    onChange={this.updateCode}
+                                    value={this.state.code}
+                                    >
+                          </textarea>
+                      </div>
+                  </div>
+              </div>
 
               {/* TODO: best way to choose dimensions? */}
               <canvas id="gameCanvas" width="800" height="450" style={{ border: "1px solid red" }}/>
