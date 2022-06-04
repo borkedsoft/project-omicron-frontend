@@ -72,6 +72,7 @@ export default class App extends React.Component<{}, AppState> {
         this.startAnim      = this.startAnim.bind(this);
         this.stopAnim       = this.stopAnim.bind(this);
         this.setCurrentFile = this.setCurrentFile.bind(this);
+        this.createFile     = this.createFile.bind(this);
 
         this.state = {
             currentFile:    "main.js",
@@ -128,6 +129,32 @@ export default class App extends React.Component<{}, AppState> {
             });
 	}
 
+    createFile() {
+        let boxElement = document.getElementById("filenameInput");
+
+        // TODO: errors
+        if (boxElement == null) return;
+        if (csrftoken === null) return;
+
+        let box = boxElement as HTMLInputElement;
+        var data = new FormData();
+        data.append("filename", box.value);
+
+        let settings = {
+            method:  "POST",
+            body:    data,
+            headers: { "X-CSRFToken" : csrftoken, },
+            // TODO: typescript has a value it expects for this,
+            //       use that
+            // TODO: hmm, does it really matter if we're running arbitrary
+            //       javascript anyway, is there a way to sandbox 3rd-party
+            //       code?
+            //mode: "same-origin",
+        };
+
+        fetch("/createFile/" + projectID + "/", settings)
+            .then((response) => this.updateProject());
+    }
 
     render() {
         var errmsg = (this.state.error)
@@ -154,8 +181,16 @@ export default class App extends React.Component<{}, AppState> {
                   </div>
 
                   <div className="row">
-                      <div className="col-1">
+                      <div className="col-2">
                           <div> {filenames} </div>
+
+                          <div className="input-group mb-3">
+                              <input id="filenameInput"
+                                     type="text"
+                                     className="form-control"
+                                     placeholder="Filename"></input>
+                              <button onClick={this.createFile}>Create</button>
+                          </div>
                       </div>
 
                       <div className="col">
