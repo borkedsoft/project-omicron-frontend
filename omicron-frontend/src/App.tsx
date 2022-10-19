@@ -1,34 +1,13 @@
 import React from 'react';
-import logo from './logo.svg';
 import './App.css';
 
-// grab the projectID variable declared externally
-const projectID  = (window as any).projectID  as number;
-const projectURL = (window as any).projectURL as string;
+import AssetBrowser from './editor/assets';
+import CodeEditor   from './editor/code';
 
-
-// https://docs.djangoproject.com/en/4.0/ref/csrf/#acquiring-the-token-if-csrf-use-sessions-and-csrf-cookie-httponly-are-false
-function getCookie(name: string) {
-    let cookieValue = null;
-
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            // Does this cookie string begin with the name we want?
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-
-    return cookieValue;
-}
-
-const csrftoken = getCookie('csrftoken');
+import {projectID} from './utilities/project';
 
 // TODO: should probably store, pass canvas context in as a parameter
+/*
 const initialCode =
 `var canvas = document.getElementById("gameCanvas");
 
@@ -49,6 +28,7 @@ if (canvas.getContext) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillRect(25 + x, 25 + y, 100, 100);
 }`;
+*/
 
 type Properties = {
     [name: string]: any
@@ -56,9 +36,6 @@ type Properties = {
 
 interface AppState {
     currentFile:    string,
-    availableFiles: string[],
-    code:           string,
-    evaled:         (elapsed: number) => void,
     running:        boolean,
     start:          number,
     error:          string | null,
@@ -68,148 +45,58 @@ export default class App extends React.Component<{}, AppState> {
     constructor(props: Properties) {
         super(props);
 
-        this.updateCode     = this.updateCode.bind(this);
-        this.startAnim      = this.startAnim.bind(this);
-        this.stopAnim       = this.stopAnim.bind(this);
-        this.setCurrentFile = this.setCurrentFile.bind(this);
-        this.createFile     = this.createFile.bind(this);
+        this.startAnim   = this.startAnim.bind(this);
+        this.stopAnim    = this.stopAnim.bind(this);
+		this.onOpenAsset = this.onOpenAsset.bind(this);
 
         this.state = {
             currentFile:    "main.js",
-            availableFiles: [],
-            code:           "",
-            evaled:         function (elapsed: number) {},
+            //evaled:         function (elapsed: number) {},
             running:        false,
             start:          -1,
             error:          null,
         };
-
-        // TODO: load main.js
-        //this.loadCode(initialCode);
-        this.retrieveCode(this.state.currentFile);
-        this.updateProject();
     }
 
-    // TODO: split code retrieval/update/editing into another component
-    retrieveCode(filename: string) {
-        fetch(window.location + filename)
-            .then((response) => response.text())
-            .then((txt) => this.setState({ code: txt }));
-    }
-
-    getProject() {
-        return fetch(projectURL)
-            .then((response) => response.json());
-    }
-
-    setCurrentFile(filename: string) {
-        this.setState({ currentFile: filename });
-        this.retrieveCode(filename);
-    }
-
-	updateProject() {
-        let self = this;
-
-		this.getProject()
-            .then((proj) => {
-                fetch(proj.codefiles)
-                    .then((response) => response.json())
-                    .then((objs) => {
-                        var ret: string[] = [];
-
-                        for (var x in objs) {
-                            ret.push(objs[x].name);
-                        }
-
-                        self.setState({ availableFiles: ret });
-                        //console.log("have available files: " + ret);
-                    })
-                    .catch((err: Error) => self.setState({ error: err.toString() }))
-                    ;
-            });
+	onOpenAsset(asset: string) {
+		console.log(`got here, opening '${asset}'`);
+		this.setState({ currentFile: asset });
 	}
 
-    createFile() {
-        let boxElement = document.getElementById("filenameInput");
-
-        // TODO: errors
-        if (boxElement == null) return;
-        if (csrftoken === null) return;
-
-        let box = boxElement as HTMLInputElement;
-        var data = new FormData();
-        data.append("filename", box.value);
-
-        let settings = {
-            method:  "POST",
-            body:    data,
-            headers: { "X-CSRFToken" : csrftoken, },
-            // TODO: typescript has a value it expects for this,
-            //       use that
-            // TODO: hmm, does it really matter if we're running arbitrary
-            //       javascript anyway, is there a way to sandbox 3rd-party
-            //       code?
-            //mode: "same-origin",
-        };
-
-        fetch("/createFile/" + projectID + "/", settings)
-            .then((response) => this.updateProject());
-    }
-
     render() {
+		console.log("current file: " + this.state.currentFile);
         var errmsg = (this.state.error)
             ? (<div className="alert alert-danger">{this.state.error as string}</div>)
             : "";
 
-        var filenames = this.state.availableFiles.map((filename) => (<div>
-            <button onClick={() => this.setCurrentFile(filename)}>{filename}</button>
-        </div>));
-
         return (
-          <div className="App">
-              <b>You're on project #{ projectID }!</b>
-              {errmsg}
+			<div className="App">
+			  <b>You're on project #{ projectID }!</b>
+			  {errmsg}
 
-              <div className="container m-0">
-                  <div className="row">
-                      <div className="btn-toolbar justify-content-end" role="toolbar">
-                          <div className="btn-group" role="group">
-                              <button className="btn btn-secondary" type="button" onClick={this.startAnim}>Start</button>
-                              <button className="btn btn-danger"    type="button" onClick={this.stopAnim}>Stop</button>
-                          </div>
-                      </div>
-                  </div>
+			  <div className="container m-0">
+				  <div className="row">
+					  <div className="btn-toolbar justify-content-end" role="toolbar">
+						  <div className="btn-group" role="group">
+							  <button className="btn btn-secondary" type="button" onClick={this.startAnim}>Start</button>
+							  <button className="btn btn-danger"    type="button" onClick={this.stopAnim}>Stop</button>
+						  </div>
+					  </div>
+				  </div>
 
-                  <div className="row">
-                      <div className="col-2">
-                          <div> {filenames} </div>
+				  <div className="row">
+					  <AssetBrowser onOpenAsset={this.onOpenAsset} />
+					  <CodeEditor filename={this.state.currentFile} />
+				  </div>
+			  </div>
 
-                          <div className="input-group mb-3">
-                              <input id="filenameInput"
-                                     type="text"
-                                     className="form-control"
-                                     placeholder="Filename"></input>
-                              <button onClick={this.createFile}>Create</button>
-                          </div>
-                      </div>
-
-                      <div className="col">
-                          <textarea placeholder='Loading...'
-                                    style={{ margin: 0, width: "100%", height: "calc(100vh - 200px)" }}
-                                    onChange={this.updateCode}
-                                    value={this.state.code}
-                                    >
-                          </textarea>
-                      </div>
-                  </div>
-              </div>
-
-              {/* TODO: best way to choose dimensions? */}
-              <canvas id="gameCanvas" width="800" height="450" style={{ border: "1px solid red" }}/>
-          </div>
+			  {/* TODO: best way to choose dimensions? */}
+			  <canvas id="gameCanvas" width="800" height="450" style={{ border: "1px solid red" }}/>
+			</div>
         );
     }
 
+	/*
     loadCode(str: string) {
         let newcode = "(function(elapsed) {" + str + "})";
 
@@ -218,55 +105,8 @@ export default class App extends React.Component<{}, AppState> {
             evaled: eval(newcode),
         });
     }
+	*/
 
-    updateCode(e: React.ChangeEvent<HTMLTextAreaElement>) {
-        if (csrftoken === null) {
-            console.log("Have no CSRF token!");
-            return;
-        }
-
-        let newCode = e.target.value;
-
-        this.setState({ code: newCode });
-
-        let settings = {
-            method: "PUT",
-            body: JSON.stringify({ code: newCode }),
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken" : csrftoken,
-            },
-            // TODO: typescript has a value it expects for this,
-            //       use that
-            // TODO: hmm, does it really matter if we're running arbitrary
-            //       javascript anyway, is there a way to sandbox 3rd-party
-            //       code?
-            //mode: "same-origin",
-        };
-
-        let self = this;
-
-        // TODO: 3 fetchs for every keystroke is less than ideal, don't do that
-        this.getProject()
-            .then((proj) => {
-                fetch(proj.codefiles)
-                    .then((response) => response.json())
-                    .then((objs) => {
-                        for (var x in objs) {
-                            if (objs[x].name == self.state.currentFile) {
-                                return objs[x];
-                            }
-                        }
-
-                        return {};
-                    })
-                    .then((obj) => {
-                        fetch(obj.codetext, settings);
-                    })
-                    .catch((err: Error) => self.setState({ error: err.toString() }))
-                    ;
-            });
-    };
 
     startAnim(e: React.MouseEvent<HTMLButtonElement>) {
         if (!this.state.running) {
