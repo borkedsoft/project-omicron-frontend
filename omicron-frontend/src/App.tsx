@@ -69,31 +69,40 @@ export default class App extends React.Component<{}, AppState> {
             ? (<div className="alert alert-danger">{this.state.error as string}</div>)
             : "";
 
-        return (
-			<div className="App">
-			  <b>You're on project #{ projectID }!</b>
-			  {errmsg}
+        return <div className="App">
+             <b>You're on project #{ projectID }!</b>
+             {errmsg}
 
-			  <div className="container m-0">
-				  <div className="row">
-					  <div className="btn-toolbar justify-content-end" role="toolbar">
-						  <div className="btn-group" role="group">
-							  <button className="btn btn-secondary" type="button" onClick={this.startAnim}>Start</button>
-							  <button className="btn btn-danger"    type="button" onClick={this.stopAnim}>Stop</button>
-						  </div>
-					  </div>
-				  </div>
+             <div className="container m-0">
+               <div className="row">
+                   <div className="btn-toolbar justify-content-end" role="toolbar">
+                       <div className="btn-group" role="group">
+                           <button className="btn btn-secondary"
+                                   type="button"
+                                   onClick={this.startAnim}>Start</button>
 
-				  <div className="row">
-					  <AssetBrowser onOpenAsset={this.onOpenAsset} />
-					  <CodeEditor filename={this.state.currentFile} />
-				  </div>
-			  </div>
+                           <button className="btn btn-danger"
+                                   type="button"
+                                   onClick={this.stopAnim}>Stop</button>
+                       </div>
+                   </div>
+               </div>
 
-			  {/* TODO: best way to choose dimensions? */}
-			  <canvas id="gameCanvas" width="800" height="450" style={{ border: "1px solid red" }}/>
-			</div>
-        );
+                {!this.state.running &&
+                   <div className="row">
+                       <AssetBrowser onOpenAsset={this.onOpenAsset} />
+                       <CodeEditor filename={this.state.currentFile} />
+                   </div>}
+
+                {this.state.running &&
+                    <canvas id="gameCanvas"
+                            width="800"
+                            height="450"
+                            style={{ border: "1px solid red" }}/>}
+
+             </div>
+           {/* TODO: best way to choose dimensions? */}
+        </div>;
     }
 
 	/*
